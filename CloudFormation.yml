@@ -1,0 +1,107 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation template to launch EC2 with Docker, Docker Compose, and deploy an application
+
+Parameters:
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+    ConstraintDescription: must be a valid EC2 instance type.
+
+Resources:
+  # Security Group to allow SSH, HTTP, and HTTPS access
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH, HTTP, and HTTPS
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+
+  # IAM Role for EC2 with AdministratorAccess
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  # IAM Instance Profile for EC2
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+
+  # EC2 Instance
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      ImageId: ami-0fff1b9a61dec8a5f
+      KeyName: CloudFormationKeyPair
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+           # Update packages and install Docker
+           sudo yum update -y
+           sudo yum install -y docker
+           sudo service docker start
+           sudo usermod -a -G docker ec2-user
+           
+           # Install Git
+           sudo yum install -y git
+           
+           # Install Docker Compose
+           sudo curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose           
+           sudo chmod +x /usr/local/bin/docker-compose
+
+           # Clone your GitHub repository
+           cd /home/ec2-user
+           git clone https://github.com/Abdelrhamaan/RightsHero
+
+           # install node modules
+           cd frontend
+           npm install
+
+           
+           # Move to the project directory
+           cd RightsHero
+           
+           # Run Docker Compose to deploy the application
+           docker-compose up -d
+
+Outputs:
+  InstancePublicIP:
+    Description: "Public IP of the EC2 instance"
+    Value: !GetAtt EC2Instance.PublicIp
+
+  InstancePublicDNS:
+    Description: "Public DNS of the EC2 instance"
+    Value: !GetAtt EC2Instance.PublicDnsName
