@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [refillStats, setRefillStats] = useState([]);
   const { accessToken, logout } = useAuth();
   const navigate = useNavigate();
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL; // Update with your backend URL
 
   useEffect(() => {
     if (!accessToken) {
@@ -41,7 +42,7 @@ export default function Dashboard() {
     const fetchRefillStats = async () => {
       try {
         const response = await axios.get(
-          "http://127.0.0.1:8000/pharmacy/refill-stats/",
+          `${API_BASE_URL}/pharmacy/refill-stats/`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,

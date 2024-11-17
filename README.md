@@ -74,23 +74,15 @@ A simple project to upload Create, list and access dashboard for medicines.
        ssh -i "CloudFormationKeyPair.pem" ec2-user@ec2-3-92-3-105.compute-1.amazonaws.com
    ```
 
-8. make migrations
-
-   ```bash
-      cd Pyramids-Pharmacy/
-      docker exec -it pyramids-pharmacy-backend-1 python manage.py makemigrations
-
-   ```
-
-9. Make migrate
-   ```bash
-        docker exec -it pyramids-pharmacy-backend-1 python manage.py migrate
-   ```
-10. Add Allowed Hosts change ec2-3-92-3-105.compute-1.amazonaws.com to your ec2 dns name or ec2 ip
+8. Add Allowed Hosts change ec2-3-92-3-105.compute-1.amazonaws.com to your ec2 dns name or ec2 ip
 
 ```bash
-docker exec -it pyramids-pharmacy-backend-1 echo "ALLOWED_HOSTS = ['instance domain name(ec2-3-92-3-105.compute-1.amazonaws.com)', 'localhost', '127.0.0.1']">> settings.py
+   sudo chown ec2-user:ec2-user settings.py
+   nano settings.py
 ```
+
+9. add this line at the end of the file
+   -ALLOWED_HOSTS = ['instance domain name(ec2-3-92-3-105.compute-1.amazonaws.com)', 'localhost', '127.0.0.1']>> settings.py
 
 ## Usage
 

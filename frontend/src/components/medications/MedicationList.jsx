@@ -22,6 +22,7 @@ export default function MedicationList() {
   const itemsPerPage = 5; // Adjust as needed
   const { accessToken, logout } = useAuth();
   const navigate = useNavigate();
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL; // Update with your backend URL
 
   useEffect(() => {
     if (!accessToken) {
@@ -32,7 +33,7 @@ export default function MedicationList() {
     const fetchMedications = async () => {
       try {
         const response = await axios.get(
-          `http://127.0.0.1:8000/pharmacy/medications/?page=${page}`,
+          `${API_BASE_URL}/pharmacy/medications/?page=${page}`,
           {
             headers: {
               Authorization: `Bearer ${accessToken}`,
@@ -59,7 +60,7 @@ export default function MedicationList() {
     const quantity = quantities[medication.id] || 1; // Default to 1 if no quantity is specified
     try {
       await axios.post(
-        `http://127.0.0.1:8000/pharmacy/refill-request/`,
+        `${API_BASE_URL}/pharmacy/refill-request/`,
         { medication: medication.id, quantity },
         {
           headers: {

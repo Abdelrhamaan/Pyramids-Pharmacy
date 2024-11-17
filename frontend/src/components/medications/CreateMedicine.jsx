@@ -11,6 +11,7 @@ export default function CreateMedicine() {
     quantity: "",
     image: null,
   });
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL; // Update with your backend URL
 
   const navigate = useNavigate();
 
@@ -46,7 +47,7 @@ export default function CreateMedicine() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/pharmacy/medicines/create/",
+        `${API_BASE_URL}/pharmacy/medicines/create/`,
         formDataToSend,
         {
           headers: {

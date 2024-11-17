@@ -22,6 +22,7 @@ export default function Register() {
     password: "",
   });
   const navigate = useNavigate();
+  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL; // Update with your backend URL
 
   // Redirect if user is already logged in
   useEffect(() => {
@@ -39,12 +40,9 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        "http://localhost:8000/accounts/signup/",
-        {
-          ...formData,
-        }
-      );
+      const response = await axios.post(`${API_BASE_URL}/accounts/signup/`, {
+        ...formData,
+      });
       const { access, refresh } = response.data;
 
       // Save tokens to local storage

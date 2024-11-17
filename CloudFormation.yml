@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation template to launch EC2 with Docker, Docker Compose, and deploy an application
+Description: CloudFormation template to launch an EC2 instance with Docker, Docker Compose, and deploy the Pyramids-Pharmacy application, including an Elastic IP for static IP addressing.
 
 Parameters:
   InstanceType:
@@ -12,11 +12,11 @@ Parameters:
     ConstraintDescription: must be a valid EC2 instance type.
 
 Resources:
-  # Security Group to allow SSH, HTTP, and HTTPS access
+  # Security Group to allow SSH, HTTP, and application-specific ports
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Allow SSH, HTTP, and HTTPS
+      GroupDescription: Allow SSH, HTTP, and App Ports
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 22
@@ -27,15 +27,15 @@ Resources:
           ToPort: 80
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: 443
-          ToPort: 443
-          CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp
           FromPort: 8000
           ToPort: 8000
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3000
+          ToPort: 3000
+          CidrIp: 0.0.0.0/0
 
-  # IAM Role for EC2 with AdministratorAccess
+  # IAM Role for EC2
   EC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -56,7 +56,18 @@ Resources:
       Roles:
         - !Ref EC2InstanceRole
 
-  # EC2 Instance
+  # Elastic IP for static IP addressing
+  ElasticIP:
+    Type: AWS::EC2::EIP
+
+  # Associate Elastic IP with EC2 instance
+  ElasticIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref EC2Instance
+      EIP: !Ref ElasticIP
+
+  # EC2 Instance with Docker and application setup
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -66,36 +77,74 @@ Resources:
       IamInstanceProfile: !Ref EC2InstanceProfile
       ImageId: ami-0fff1b9a61dec8a5f
       KeyName: CloudFormationKeyPair
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 20
+            VolumeType: gp3
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-           # Update packages and install Docker
-           sudo yum update -y
-           sudo yum install -y docker
-           sudo service docker start
-           sudo usermod -a -G docker ec2-user
-           
-           # Install Git
-           sudo yum install -y git
-           
-           # Install Docker Compose
-           sudo curl -L https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose           
-           sudo chmod +x /usr/local/bin/docker-compose
+          # Update packages
+          sudo yum update -y
 
-           # Clone your GitHub repository
-           cd /home/ec2-user
-           git clone https://github.com/Abdelrhamaan/RightsHero
+          # Increase Swap Memory
+          sudo fallocate -l 2G /swapfile       # Create a 2GB swap file
+          sudo chmod 600 /swapfile            # Set correct permissions
+          sudo mkswap /swapfile               # Format the file as swap
+          sudo swapon /swapfile               # Enable the swap file
+          echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab  # Make it persistent across reboots
+          echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf     # Adjust swappiness (optional)
+          sudo sysctl -p                                             # Apply the changes
 
-           # install node modules
-           cd frontend
-           npm install
+          # Install Docker
+          sudo yum install -y docker
+          sudo service docker start
+          sudo usermod -a -G docker ec2-user
 
-           
-           # Move to the project directory
-           cd RightsHero
-           
-           # Run Docker Compose to deploy the application
-           docker-compose up -d
+          # Reload group membership to avoid permission issues
+          newgrp docker
+
+          # Install Git
+          sudo yum install -y git
+
+          # Install Node.js and npm
+          curl -sL https://rpm.nodesource.com/setup_20.x | sudo bash -
+          sudo yum install -y nodejs
+
+          # Install Docker Compose
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
+          # Clone your GitHub repository
+          cd /home/ec2-user
+          git clone https://github.com/Abdelrhamaan/Pyramids-Pharmacy
+
+          # Set the API base URL in frontend environment
+          # echo "REACT_APP_API_BASE_URL=http://${ElasticIP}:8000/pharmacy" >> /home/ec2-user/Pyramids-Pharmacy/frontend/.env
+
+          # Install node modules
+          cd Pyramids-Pharmacy/frontend
+          sudo chown -R ec2-user:ec2-user .
+          npm install
+
+          # remove space for building 
+          docker system prune -a -f
+          sudo rm -rf /var/log/*
+
+
+          # Move to the project directory and deploy using Docker Compose
+          cd /home/ec2-user/Pyramids-Pharmacy
+          docker-compose up --build -d
+
+          # make migrations 
+          docker exec -it pyramids-pharmacy-backend-1 python manage.py makemigrations
+          docker exec -it pyramids-pharmacy-backend-1 python manage.py migrate 
+
+          # restart docker 
+          docker-compose restart
+
+
 
 Outputs:
   InstancePublicIP:
