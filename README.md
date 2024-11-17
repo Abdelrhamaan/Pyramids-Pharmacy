@@ -77,18 +77,19 @@ A simple project to upload Create, list and access dashboard for medicines.
 8. make migrations
 
    ```bash
-    docker exec -it medicationtask-backend-1 python manage.py makemigrations
+      cd Pyramids-Pharmacy/
+      docker exec -it pyramids-pharmacy-backend-1 python manage.py makemigrations
 
    ```
 
 9. Make migrate
    ```bash
-        docker exec -it medicationtask-backend-1 python manage.py migrate
+        docker exec -it pyramids-pharmacy-backend-1 python manage.py migrate
    ```
 10. Add Allowed Hosts change ec2-3-92-3-105.compute-1.amazonaws.com to your ec2 dns name or ec2 ip
 
 ```bash
-docker exec -it medicationtask-backend-1 echo "ALLOWED_HOSTS = ['instance domain name(ec2-3-92-3-105.compute-1.amazonaws.com)', 'localhost', '127.0.0.1']">> settings.py
+docker exec -it pyramids-pharmacy-backend-1 echo "ALLOWED_HOSTS = ['instance domain name(ec2-3-92-3-105.compute-1.amazonaws.com)', 'localhost', '127.0.0.1']">> settings.py
 ```
 
 ## Usage
@@ -97,7 +98,7 @@ docker exec -it medicationtask-backend-1 echo "ALLOWED_HOSTS = ['instance domain
 
 1. You can create users by two ways :
 
-- first way run this command docker exec -it medicationtask-backend-1 python manage.py createsuperuser
+- first way run this command docker exec -it pyramids-pharmacy-backend-1 python manage.py createsuperuser
 - second way go to this url http://localhost:3000/signup
 
 2. enter to project by two ways :
@@ -108,11 +109,3 @@ docker exec -it medicationtask-backend-1 echo "ALLOWED_HOSTS = ['instance domain
 3. after login you can go to create new Medicine to create Medicine from navbar new medicine
 4. after adding new medicines you can request refill
 5. then you can go to dashboards to see charts for your requests
-
-<!-- ## Installation
-
-1. Clone repository
-
-   ```bash
-        git clone https://github.com/Abdelrhamaan/RightsHero
-   ```
