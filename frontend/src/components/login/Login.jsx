@@ -16,8 +16,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const API_BASE_URL = process.env.REACT_APP_API_BASE_URL; // Update with your backend URL
-
+  const API_BASE_URL =
+    window.ENV?.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE_URL;
   const handleLogin = async (e) => {
     e.preventDefault();
 
