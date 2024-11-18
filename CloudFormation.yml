@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: CloudFormation template to launch an EC2 instance with Docker, Docker Compose, and deploy the Pyramids-Pharmacy application, including an Elastic IP for static IP addressing.
+Description: CloudFormation template to launch an EC2 instance with Docker, Docker Compose, and deploy the Pyramids-Pharmacy application.
 
 Parameters:
   InstanceType:
@@ -12,7 +12,6 @@ Parameters:
     ConstraintDescription: must be a valid EC2 instance type.
 
 Resources:
-  # Security Group to allow SSH, HTTP, and application-specific ports
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -35,7 +34,6 @@ Resources:
           ToPort: 3000
           CidrIp: 0.0.0.0/0
 
-  # IAM Role for EC2
   EC2InstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -49,25 +47,21 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AdministratorAccess
 
-  # IAM Instance Profile for EC2
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
         - !Ref EC2InstanceRole
 
-  # Elastic IP for static IP addressing
   ElasticIP:
     Type: AWS::EC2::EIP
 
-  # Associate Elastic IP with EC2 instance
   ElasticIPAssociation:
     Type: AWS::EC2::EIPAssociation
     Properties:
       InstanceId: !Ref EC2Instance
       EIP: !Ref ElasticIP
 
-  # EC2 Instance with Docker and application setup
   EC2Instance:
     Type: AWS::EC2::Instance
     Properties:
@@ -85,30 +79,25 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          # Update packages
+          # Update system packages
           sudo yum update -y
 
-          # Increase Swap Memory
-          sudo fallocate -l 2G /swapfile       # Create a 2GB swap file
-          sudo chmod 600 /swapfile            # Set correct permissions
-          sudo mkswap /swapfile               # Format the file as swap
-          sudo swapon /swapfile               # Enable the swap file
-          echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab  # Make it persistent across reboots
-          echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf     # Adjust swappiness (optional)
-          sudo sysctl -p                                             # Apply the changes
+          # Install required packages
+          sudo yum install -y docker git jq
 
-          # Install Docker
-          sudo yum install -y docker
-          sudo service docker start
+          # Setup swap space
+          sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+          # Start and enable Docker
+          sudo systemctl start docker
+          sudo systemctl enable docker
           sudo usermod -a -G docker ec2-user
 
-          # Reload group membership to avoid permission issues
-          newgrp docker
-
-          # Install Git
-          sudo yum install -y git
-
-          # Install Node.js and npm
+          # Install Node.js 20.x
           curl -sL https://rpm.nodesource.com/setup_20.x | sudo bash -
           sudo yum install -y nodejs
 
@@ -116,35 +105,66 @@ Resources:
           sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
 
-          # Clone your GitHub repository
+          # Get the public IP
+          export PUBLIC_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+
+          # Clone the repository
           cd /home/ec2-user
           git clone https://github.com/Abdelrhamaan/Pyramids-Pharmacy
+          cd Pyramids-Pharmacy
 
-          # Set the API base URL in frontend environment
-          echo "REACT_APP_API_BASE_URL=http://${ElasticIP}:8000/" >> /home/ec2-user/Pyramids-Pharmacy/frontend/.env
+          # Create frontend environment configuration
+          cat << EOF > frontend/public/env-config.js
+          window.ENV = {
+            REACT_APP_API_BASE_URL: "http://$PUBLIC_IP:8000"
+          };
+          EOF
 
-          # Install node modules
-          cd Pyramids-Pharmacy/frontend
-          sudo chown -R ec2-user:ec2-user .
-          npm install
+          # Create .env file for Docker Compose
+          cat << EOF > .env
+          PUBLIC_IP=$PUBLIC_IP
+          REACT_APP_API_BASE_URL=http://$PUBLIC_IP:8000
+          EOF
 
-          # remove space for building 
+          # Set permissions
+          sudo chown -R ec2-user:ec2-user /home/ec2-user/Pyramids-Pharmacy
+          
+          # Clean up Docker
           docker system prune -a -f
           sudo rm -rf /var/log/*
 
+          # Build and start the services
+          docker-compose build
+          docker-compose up -d
 
-          # Move to the project directory and deploy using Docker Compose
+          # Wait for containers to start
+          sleep 30
+
+          # Run database migrations
+          docker exec pyramids-pharmacy-backend-1 python manage.py makemigrations
+          docker exec pyramids-pharmacy-backend-1 python manage.py migrate
+
+          # Create a script to check and restart services if needed
+          cat << 'EOF' > /home/ec2-user/check-services.sh
+          #!/bin/bash
+          if ! docker ps | grep -q pyramids-pharmacy-frontend-1; then
+            cd /home/ec2-user/Pyramids-Pharmacy
+            docker-compose up -d frontend
+          fi
+          if ! docker ps | grep -q pyramids-pharmacy-backend-1; then
+            cd /home/ec2-user/Pyramids-Pharmacy
+            docker-compose up -d backend
+          fi
+          EOF
+
+          chmod +x /home/ec2-user/check-services.sh
+
+          # Add cron job to check services every 5 minutes
+          (crontab -l 2>/dev/null; echo "*/5 * * * * /home/ec2-user/check-services.sh") | crontab -
+
+          # Final restart to ensure everything is running
           cd /home/ec2-user/Pyramids-Pharmacy
-          docker-compose up --build -d
-
-          # make migrations 
-          docker exec -it pyramids-pharmacy-backend-1 python manage.py makemigrations
-          docker exec -it pyramids-pharmacy-backend-1 python manage.py migrate 
-
-          # restart docker 
           docker-compose restart
-
-
 
 Outputs:
   InstancePublicIP:
@@ -154,3 +174,15 @@ Outputs:
   InstancePublicDNS:
     Description: "Public DNS of the EC2 instance"
     Value: !GetAtt EC2Instance.PublicDnsName
+
+  ElasticIP:
+    Description: "Elastic IP assigned to the instance"
+    Value: !Ref ElasticIP
+
+  BackendURL:
+    Description: "URL for the backend API"
+    Value: !Sub "http://${ElasticIP}:8000"
+
+  FrontendURL:
+    Description: "URL for the frontend application"
+    Value: !Sub "http://${ElasticIP}:3000"

@@ -1,4 +1,4 @@
-version: "4.6"
+version: "3.8"
 
 services:
   db:
@@ -30,8 +30,8 @@ services:
   frontend:
     build:
       context: ./frontend
-    volumes:
-      - ./frontend:/app
+    environment:
+      - REACT_APP_API_BASE_URL=http://${PUBLIC_IP}:8000
     ports:
       - "3000:3000"
     depends_on:
