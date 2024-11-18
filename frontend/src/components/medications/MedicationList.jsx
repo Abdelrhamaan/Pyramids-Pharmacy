@@ -24,7 +24,12 @@ export default function MedicationList() {
   const navigate = useNavigate();
   const API_BASE_URL =
     window.ENV?.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_BASE_URL;
-
+    console.log("base_url", API_BASE_URL);
+    console.log("window.ENV", window.ENV);
+    console.log(
+      "process.env.REACT_APP_API_BASE_URL",
+      process.env.REACT_APP_API_BASE_URL
+    );
   useEffect(() => {
     if (!accessToken) {
       navigate("/login");
