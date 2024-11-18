@@ -1,4 +1,4 @@
-# Online Book Store
+# Pyramids Pharmacy Task
 
 ## Table of Contents
 
@@ -85,7 +85,6 @@ A simple project to upload Create, list and access dashboard for medicines.
    -ALLOWED_HOSTS = ['instance domain name(ec2-3-92-3-105.compute-1.amazonaws.com)', 'ec2ip']
 
 ## Usage
-
 
 1. You can create users by two ways :
 
