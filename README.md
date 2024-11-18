@@ -82,21 +82,20 @@ A simple project to upload Create, list and access dashboard for medicines.
 ```
 
 9. add this line at the end of the file
-   -ALLOWED_HOSTS = ['instance domain name(ec2-3-92-3-105.compute-1.amazonaws.com)', 'localhost', '127.0.0.1']>> settings.py
+   -ALLOWED_HOSTS = ['instance domain name(ec2-3-92-3-105.compute-1.amazonaws.com)', 'ec2ip']
 
 ## Usage
 
-0. Go To http://your ec2 dns or ec2 ip:8000 -->
 
 1. You can create users by two ways :
 
 - first way run this command docker exec -it pyramids-pharmacy-backend-1 python manage.py createsuperuser
-- second way go to this url http://localhost:3000/signup
+- second way go to this url http://<ec2ip or ec2 dns>:3000/signup
 
 2. enter to project by two ways :
 
-- first way django admin panel http://localhost:8000/login
-- second way go to react login page http://localhost:3000/login
+- first way django admin panel http://<ec2ip or ec2 dns>:8000/admin
+- second way go to react login page http://<ec2ip or ec2 dns>:3000/login
 
 3. after login you can go to create new Medicine to create Medicine from navbar new medicine
 4. after adding new medicines you can request refill

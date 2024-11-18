@@ -121,7 +121,7 @@ Resources:
           git clone https://github.com/Abdelrhamaan/Pyramids-Pharmacy
 
           # Set the API base URL in frontend environment
-          # echo "REACT_APP_API_BASE_URL=http://${ElasticIP}:8000/pharmacy" >> /home/ec2-user/Pyramids-Pharmacy/frontend/.env
+          echo "REACT_APP_API_BASE_URL=http://${ElasticIP}:8000/" >> /home/ec2-user/Pyramids-Pharmacy/frontend/.env
 
           # Install node modules
           cd Pyramids-Pharmacy/frontend
