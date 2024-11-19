@@ -113,6 +113,13 @@ Resources:
           git clone https://github.com/Abdelrhamaan/Pyramids-Pharmacy
           cd Pyramids-Pharmacy
 
+          # Update settings.py with dynamic CORS_ALLOWED_ORIGINS
+          BACKEND_SETTINGS="/home/ec2-user/Pyramids-Pharmacy/backend/pyramids_pharmacy/settings.py"
+          echo >> $BACKEND_SETTINGS
+          echo "CORS_ALLOWED_ORIGINS = [" >> $BACKEND_SETTINGS
+          echo "    \"http://$PUBLIC_IP:3000\",  # Dynamic Frontend IP" >> $BACKEND_SETTINGS
+          echo "]" >> $BACKEND_SETTINGS
+
           # Create frontend environment configuration
           cat << EOF > frontend/public/env-config.js
           window.ENV = {
